@@ -1,69 +1,112 @@
-import Image from "next/image";
+import Link from "next/link";
+import { createClient } from "@/lib/supabase/server";
+import { computeConsistency, type Tier } from "@/lib/consistency";
+import type { Habit } from "@/lib/habits";
+import { HabitCard } from "@/components/HabitCard";
+import { EveningShutdown } from "@/components/EveningShutdown";
+import { ProLockedCard } from "@/components/ProLockedCard";
+import { signOut } from "@/app/actions";
 
-export default function Home() {
+const HISTORY_DAYS = 90;
+
+export default async function DashboardPage() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return null; // middleware redirects to /login
+  }
+
+  const { data: habits } = await supabase
+    .from("habits")
+    .select("*")
+    .order("created_at", { ascending: true });
+
+  const since = new Date();
+  since.setDate(since.getDate() - HISTORY_DAYS);
+  const { data: logs } = await supabase
+    .from("habit_logs")
+    .select("habit_id, log_date, tier")
+    .gte("log_date", since.toISOString().slice(0, 10));
+
+  const today = new Date().toISOString().slice(0, 10);
+
+  const rows = (habits ?? []).map((habit: Habit) => {
+    const habitLogs = (logs ?? [])
+      .filter((l) => l.habit_id === habit.id)
+      .map((l) => ({ date: l.log_date as string, tier: l.tier as Tier }));
+
+    const consistency = computeConsistency(habitLogs);
+    const loggedToday = habitLogs.find((l) => l.date === today);
+    const suggestedTier: Tier = consistency.needsRecovery ? 1 : 2;
+
+    return {
+      habit,
+      consistency,
+      suggestedTier,
+      loggedTierToday: loggedToday ? loggedToday.tier : null,
+    };
+  });
+
+  const pendingForShutdown = rows
+    .filter((r) => !r.loggedTierToday)
+    .map((r) => ({ habit: r.habit, suggestedTier: r.suggestedTier }));
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
+    <main className="mx-auto w-full max-w-2xl px-4 py-10 pb-24">
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h1 className="text-xl font-semibold">Today</h1>
+          <p className="text-sm text-neutral-500">{user.email}</p>
+        </div>
+        <form action={signOut}>
+          <button type="submit" className="text-sm text-neutral-400 hover:text-neutral-700">
+            Sign out
+          </button>
+        </form>
+      </div>
+
+      <div className="space-y-3">
+        {rows.length === 0 && (
+          <div className="rounded-xl border border-dashed border-neutral-300 p-6 text-center text-sm text-neutral-500">
+            No habits yet. Start with one — you can always add more.
+          </div>
+        )}
+        {rows.map(({ habit, consistency, suggestedTier, loggedTierToday }) => (
+          <HabitCard
+            key={habit.id}
+            habit={habit}
+            consistency={consistency}
+            suggestedTier={suggestedTier}
+            loggedTierToday={loggedTierToday}
+          />
+        ))}
+      </div>
+
+      <Link
+        href="/habits/new"
+        className="mt-4 block w-full rounded-xl border border-neutral-300 py-2.5 text-center text-sm font-medium text-neutral-700 hover:border-neutral-500"
+      >
+        + Add habit
+      </Link>
+
+      <div className="mt-10 space-y-3">
+        <h2 className="text-sm font-medium text-neutral-500 uppercase tracking-wide">
+          Pro features
+        </h2>
+        <ProLockedCard
+          title="Smart Calendar Sync"
+          description="Connect Google Calendar or Outlook so Pivot suggests today's tier based on your real meeting load."
         />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.tsx
-            </code>{" "}
-            file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
-    </div>
+        <ProLockedCard
+          title="Consistency Analytics"
+          description="Trends across every habit, tier distribution over time, and recovery-day patterns."
+        />
+      </div>
+
+      <EveningShutdown pending={pendingForShutdown} />
+    </main>
   );
 }

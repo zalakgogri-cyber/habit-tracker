@@ -1,36 +1,29 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Pivot — Adaptive Habit Tracking
 
-## Getting Started
+Zero-guilt, tiered habit tracking for founders and high-stress professionals. See [`CLAUDE.md`](./CLAUDE.md) for build scope and conventions, and `Pivot_PRD.docx` for the full product spec.
 
-First, run the development server:
+## v1.0 core loop (implemented)
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+- **Dynamic Tiered Tracking** — every habit has a Tier 1 (non-negotiable), Tier 2 (target), and Tier 3 (stretch). Logging any tier completes the day.
+- **"Never Miss Twice" consistency engine** — a weighted score (`lib/consistency.ts`) that never resets to a bare 0-day streak. One missed day triggers a Tier 1 recovery prompt; two consecutive missed days decay the score gradually.
+- **Evening Shutdown** — a persistent end-of-day banner (default 5:30 PM) for one-tap logging of any habit not yet completed.
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Calendar Sync and Analytics are shown as locked "Pro" previews only — no live OAuth/Stripe integration yet, per the PRD's own Phase 2 roadmap.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Setup
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+1. Install dependencies: `npm install`
+2. Create a free project at [supabase.com](https://supabase.com), then run [`supabase/schema.sql`](./supabase/schema.sql) in its SQL editor.
+3. Copy `.env.local.example` to `.env.local` and fill in your Supabase project URL and anon key (Project Settings → API).
+4. `npm run dev` — open [http://localhost:3000](http://localhost:3000).
 
-## Learn More
+## Commands
 
-To learn more about Next.js, take a look at the following resources:
+- `npm run dev` — local dev server
+- `npm run build` — production build
+- `npm run lint` — lint
+- `npm test` — Vitest suite (see `lib/consistency.test.ts` for the scoring engine)
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Deployment
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Auto-deploys to Vercel on push to `main`, with preview deploys on PRs. Set `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` in the Vercel project's Environment Variables panel.
