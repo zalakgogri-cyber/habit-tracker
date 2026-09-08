@@ -24,7 +24,7 @@ Status: items 1–3 are implemented (see `lib/consistency.ts`, `lib/habits.ts`, 
 - **Framework:** Next.js (App Router), TypeScript
 - **Deployment:** Vercel (auto-deploy on push to `main`; preview deploys on PRs)
 - **Styling:** Tailwind CSS
-- **Auth/DB:** Supabase (Postgres + built-in auth). Schema in `supabase/schema.sql`. Confirmed with the user over the Postgres+NextAuth alternative for lower setup overhead and built-in RLS.
+- **Auth/DB:** None. This is a local-only demo build — no login, no backend. Habits and logs persist client-side via `localStorage` (`lib/storage.ts`), seeded with sample data on first load. Supabase was removed 2026-09-08 at the user's request so the app deploys to Vercel with zero external services or env vars; revisit this if/when real multi-device persistence is needed.
 - **Calendar integrations:** Google Calendar API, Microsoft Graph (Outlook) — OAuth, read-only scopes only. Not yet wired (Phase 2).
 - **Payments:** Stripe for the $4.99/mo Pro subscription. Not yet wired (Phase 2).
 - **Tests:** Vitest (`npm test`) — see `lib/consistency.test.ts`.

@@ -1,9 +1,7 @@
 "use client";
 
-import { useTransition } from "react";
 import type { Habit } from "@/lib/habits";
 import type { ConsistencyState, Tier } from "@/lib/consistency";
-import { logHabitTier } from "@/app/actions";
 import { ConsistencyGauge } from "./ConsistencyGauge";
 
 const TIER_LABELS: Record<Tier, string> = {
@@ -17,25 +15,19 @@ export function HabitCard({
   consistency,
   suggestedTier,
   loggedTierToday,
+  onLog,
 }: {
   habit: Habit;
   consistency: ConsistencyState;
   suggestedTier: Tier;
   loggedTierToday: Tier | null;
+  onLog: (tier: Tier) => void;
 }) {
-  const [isPending, startTransition] = useTransition();
-
   const tierDescriptions: Record<Tier, string> = {
     1: habit.tier1_description,
     2: habit.tier2_description,
     3: habit.tier3_description,
   };
-
-  function handleLog(tier: Tier) {
-    startTransition(() => {
-      logHabitTier(habit.id, tier);
-    });
-  }
 
   return (
     <div className="rounded-xl border border-neutral-200 bg-white p-4 shadow-sm space-y-3">
@@ -69,8 +61,7 @@ export function HabitCard({
             <button
               key={tier}
               type="button"
-              disabled={isPending}
-              onClick={() => handleLog(tier)}
+              onClick={() => onLog(tier)}
               title={tierDescriptions[tier]}
               className={`rounded-lg border px-2 py-2 text-xs font-medium transition disabled:opacity-50 ${
                 isLogged

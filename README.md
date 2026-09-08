@@ -13,9 +13,9 @@ Calendar Sync and Analytics are shown as locked "Pro" previews only — no live 
 ## Setup
 
 1. Install dependencies: `npm install`
-2. Create a free project at [supabase.com](https://supabase.com), then run [`supabase/schema.sql`](./supabase/schema.sql) in its SQL editor.
-3. Copy `.env.local.example` to `.env.local` and fill in your Supabase project URL and anon key (Project Settings → API).
-4. `npm run dev` — open [http://localhost:3000](http://localhost:3000).
+2. `npm run dev` — open [http://localhost:3000](http://localhost:3000).
+
+This is a **local-only demo build**: there's no backend, no login, and no env vars to configure. Habits and logs persist in the visitor's browser via `localStorage` (see `lib/storage.ts`), seeded with a couple of sample habits on first load. Data doesn't sync across devices and resets if the browser clears site data — a "Reset demo" button on the dashboard also clears it on demand.
 
 ## Commands
 
@@ -26,4 +26,4 @@ Calendar Sync and Analytics are shown as locked "Pro" previews only — no live 
 
 ## Deployment
 
-Auto-deploys to Vercel on push to `main`, with preview deploys on PRs. Set `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` in the Vercel project's Environment Variables panel.
+Auto-deploys to Vercel on push to `main`, with preview deploys on PRs. No environment variables or external services are required.

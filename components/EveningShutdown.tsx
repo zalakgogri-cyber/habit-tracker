@@ -1,7 +1,6 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
-import { logHabitTier } from "@/app/actions";
+import { useEffect, useState } from "react";
 import type { Habit } from "@/lib/habits";
 import type { Tier } from "@/lib/consistency";
 
@@ -15,10 +14,15 @@ type PendingHabit = { habit: Habit; suggestedTier: Tier };
  * (PRD §5.4): a persistent end-of-day prompt for any habit not yet logged.
  * Dismissible per session, reappears the following day.
  */
-export function EveningShutdown({ pending }: { pending: PendingHabit[] }) {
+export function EveningShutdown({
+  pending,
+  onLog,
+}: {
+  pending: PendingHabit[];
+  onLog: (habitId: string, tier: Tier) => void;
+}) {
   const [dismissed, setDismissed] = useState(false);
   const [isPastShutdown, setIsPastShutdown] = useState(false);
-  const [isPending, startTransition] = useTransition();
 
   useEffect(() => {
     const check = () => {
@@ -34,12 +38,6 @@ export function EveningShutdown({ pending }: { pending: PendingHabit[] }) {
   }, []);
 
   if (!isPastShutdown || dismissed || pending.length === 0) return null;
-
-  function handleLog(habitId: string, tier: Tier) {
-    startTransition(() => {
-      logHabitTier(habitId, tier);
-    });
-  }
 
   return (
     <div className="fixed inset-x-0 bottom-0 z-50 border-t border-neutral-200 bg-white/95 backdrop-blur px-4 py-3 shadow-[0_-4px_16px_rgba(0,0,0,0.06)]">
@@ -61,8 +59,7 @@ export function EveningShutdown({ pending }: { pending: PendingHabit[] }) {
             <button
               key={habit.id}
               type="button"
-              disabled={isPending}
-              onClick={() => handleLog(habit.id, suggestedTier)}
+              onClick={() => onLog(habit.id, suggestedTier)}
               className="rounded-full border border-neutral-300 px-3 py-1.5 text-xs font-medium text-neutral-700 hover:border-neutral-900 disabled:opacity-50"
             >
               {habit.name} · Tier {suggestedTier}

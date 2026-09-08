@@ -1,42 +1,47 @@
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/server";
 import { computeConsistency, type Tier } from "@/lib/consistency";
 import type { Habit } from "@/lib/habits";
+import { getHabits, getLogsSince, logHabitTier, resetDemoData, type HabitLogRecord } from "@/lib/storage";
 import { HabitCard } from "@/components/HabitCard";
 import { EveningShutdown } from "@/components/EveningShutdown";
 import { ProLockedCard } from "@/components/ProLockedCard";
-import { signOut } from "@/app/actions";
 
 const HISTORY_DAYS = 90;
 
-export default async function DashboardPage() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+type Loaded = { habits: Habit[]; logs: HabitLogRecord[] };
 
-  if (!user) {
-    return null; // middleware redirects to /login
-  }
-
-  const { data: habits } = await supabase
-    .from("habits")
-    .select("*")
-    .order("created_at", { ascending: true });
-
+function loadFromStorage(): Loaded {
   const since = new Date();
   since.setDate(since.getDate() - HISTORY_DAYS);
-  const { data: logs } = await supabase
-    .from("habit_logs")
-    .select("habit_id, log_date, tier")
-    .gte("log_date", since.toISOString().slice(0, 10));
+  return {
+    habits: getHabits(),
+    logs: getLogsSince(since.toISOString().slice(0, 10)),
+  };
+}
 
-  const today = new Date().toISOString().slice(0, 10);
+export default function DashboardPage() {
+  // localStorage isn't available during SSR, so state starts empty and is
+  // hydrated once on mount — a one-time read from a browser-only store, not
+  // derived state, hence the effect rather than computing it during render.
+  const [data, setData] = useState<Loaded | null>(null);
+  const { habits, logs } = data ?? { habits: [], logs: [] };
 
-  const rows = (habits ?? []).map((habit: Habit) => {
-    const habitLogs = (logs ?? [])
+  useEffect(() => {
+    // localStorage is unavailable during SSR; this is a one-time hydration
+    // read on mount, not state derived from props/state.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setData(loadFromStorage());
+  }, []);
+
+  const today = useMemo(() => new Date().toISOString().slice(0, 10), []);
+
+  const rows = habits.map((habit) => {
+    const habitLogs = logs
       .filter((l) => l.habit_id === habit.id)
-      .map((l) => ({ date: l.log_date as string, tier: l.tier as Tier }));
+      .map((l) => ({ date: l.log_date, tier: l.tier }));
 
     const consistency = computeConsistency(habitLogs);
     const loggedToday = habitLogs.find((l) => l.date === today);
@@ -54,18 +59,41 @@ export default async function DashboardPage() {
     .filter((r) => !r.loggedTierToday)
     .map((r) => ({ habit: r.habit, suggestedTier: r.suggestedTier }));
 
+  function handleLog(habitId: string, tier: Tier) {
+    logHabitTier(habitId, tier);
+    setData((prev) => {
+      const prevLogs = prev?.logs ?? [];
+      const existingIndex = prevLogs.findIndex((l) => l.habit_id === habitId && l.log_date === today);
+      const next = { habit_id: habitId, log_date: today, tier };
+      const nextLogs =
+        existingIndex >= 0
+          ? prevLogs.map((l, i) => (i === existingIndex ? next : l))
+          : [...prevLogs, next];
+      return { habits: prev?.habits ?? [], logs: nextLogs };
+    });
+  }
+
+  function handleReset() {
+    resetDemoData();
+    setData(loadFromStorage());
+  }
+
+  if (!data) return null;
+
   return (
     <main className="mx-auto w-full max-w-2xl px-4 py-10 pb-24">
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-xl font-semibold">Today</h1>
-          <p className="text-sm text-neutral-500">{user.email}</p>
+          <p className="text-sm text-neutral-500">Demo — stored in this browser only</p>
         </div>
-        <form action={signOut}>
-          <button type="submit" className="text-sm text-neutral-400 hover:text-neutral-700">
-            Sign out
-          </button>
-        </form>
+        <button
+          type="button"
+          onClick={handleReset}
+          className="text-sm text-neutral-400 hover:text-neutral-700"
+        >
+          Reset demo
+        </button>
       </div>
 
       <div className="space-y-3">
@@ -81,6 +109,7 @@ export default async function DashboardPage() {
             consistency={consistency}
             suggestedTier={suggestedTier}
             loggedTierToday={loggedTierToday}
+            onLog={(tier) => handleLog(habit.id, tier)}
           />
         ))}
       </div>
@@ -106,7 +135,7 @@ export default async function DashboardPage() {
         />
       </div>
 
-      <EveningShutdown pending={pendingForShutdown} />
+      <EveningShutdown pending={pendingForShutdown} onLog={handleLog} />
     </main>
   );
 }

@@ -8,7 +8,6 @@ export type HabitCategory =
 
 export type Habit = {
   id: string;
-  user_id: string;
   name: string;
   category: HabitCategory;
   tier1_description: string;

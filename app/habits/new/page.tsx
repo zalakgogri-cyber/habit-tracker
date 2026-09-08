@@ -2,10 +2,12 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { createHabit } from "@/app/actions";
+import { useRouter } from "next/navigation";
+import { createHabit } from "@/lib/storage";
 import { CATEGORY_TIER_DEFAULTS, HABIT_CATEGORIES, type HabitCategory } from "@/lib/habits";
 
 export default function NewHabitPage() {
+  const router = useRouter();
   const [category, setCategory] = useState<HabitCategory>("exercise");
   const defaults = CATEGORY_TIER_DEFAULTS[category];
   const [tiers, setTiers] = useState(defaults);
@@ -18,6 +20,21 @@ export default function NewHabitPage() {
     }
   }
 
+  function handleSubmit(formData: FormData) {
+    const name = String(formData.get("name") ?? "").trim();
+    const cat = String(formData.get("category") ?? "custom") as HabitCategory;
+    const tier1 = String(formData.get("tier1") ?? "").trim();
+    const tier2 = String(formData.get("tier2") ?? "").trim();
+    const tier3 = String(formData.get("tier3") ?? "").trim();
+
+    if (!name || !tier1 || !tier2 || !tier3) {
+      throw new Error("Habit name and all three tiers are required.");
+    }
+
+    createHabit({ name, category: cat, tier1, tier2, tier3 });
+    router.push("/");
+  }
+
   return (
     <main className="mx-auto w-full max-w-lg px-4 py-10">
       <Link href="/" className="text-sm text-neutral-500 hover:text-neutral-800">
@@ -28,7 +45,7 @@ export default function NewHabitPage() {
         Define three tiers so you always have a realistic target, no matter how the day goes.
       </p>
 
-      <form action={createHabit} className="mt-6 space-y-5">
+      <form action={handleSubmit} className="mt-6 space-y-5">
         <div>
           <label className="block text-sm font-medium text-neutral-700 mb-1">Habit name</label>
           <input
